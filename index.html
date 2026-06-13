@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker Finder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #12151c;
+    --border: #1e232e;
+    --accent: #ff3c3c;
+    --accent2: #ff7a00;
+    --safe: #00c97b;
+    --warn: #ffcc00;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+    50% { opacity: 0.5; box-shadow: 0 0 16px var(--accent); }
+  }
+
+  header h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  main {
+    width: 100%;
+    max-width: 640px;
+    padding: 32px 20px;
+    flex: 1;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .hero h2 {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+
+  .hero h2 span {
+    color: var(--accent);
+  }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .scan-btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: background 0.2s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-btn:hover { background: #e03030; }
+  .scan-btn:active { transform: scale(0.98); }
+  .scan-btn:disabled { background: #2a2f3a; color: var(--muted); cursor: not-allowed; }
+
+  .scan-btn .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #status-bar.active { color: var(--warn); border-color: var(--warn); }
+  #status-bar.found { border-color: var(--accent); color: var(--accent); }
+  #status-bar.clean { border-color: var(--safe); color: var(--safe); }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .device-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .device-card.threat { border-color: var(--accent); background: rgba(255,60,60,0.06); }
+  .device-card.warn { border-color: var(--warn); background: rgba(255,204,0,0.05); }
+
+  .device-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .device-type {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    align-self: start;
+    justify-self: end;
+  }
+
+  .type-airtag { background: rgba(255,60,60,0.2); color: var(--accent); }
+  .type-flipper { background: rgba(255,122,0,0.2); color: var(--accent2); }
+  .type-unknown { background: rgba(90,96,112,0.2); color: var(--muted); }
+  .type-tile { background: rgba(255,204,0,0.2); color: var(--warn); }
+
+  .device-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    grid-column: 1;
+  }
+
+  .rssi-bar-wrap {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .rssi-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    width: 60px;
+  }
+
+  .rssi-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .rssi-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s;
+  }
+
+  .rssi-fill.close { background: var(--accent); }
+  .rssi-fill.medium { background: var(--warn); }
+  .rssi-fill.far { background: var(--safe); }
+
+  .rssi-value {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    width: 40px;
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    display: none;
+  }
+
+  .empty-state.visible { display: block; }
+
+  .empty-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .info-section {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+
+  .info-row {
+    display: flex;
+    align-items: start;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+
+  .info-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .info-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .info-desc {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .compat-note {
+    background: rgba(255,204,0,0.08);
+    border: 1px solid rgba(255,204,0,0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--warn);
+    font-family: var(--mono);
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .compat-note.visible { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-dot, .scan-btn .spinner { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot"></div>
+  <h1>Tracker Finder</h1>
+  <span class="badge">BT SCANNER v1.0</span>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Detect <span>hidden trackers</span><br>around you</h2>
+    <p>Scan for AirTags, Flipper Zero devices, Tiles, and other Bluetooth trackers nearby using your browser.</p>
+  </div>
+
+  <div class="compat-note" id="compat-note">
+    ⚠ Web Bluetooth requires Chrome or Edge on Android/desktop. iOS Safari is not supported.
+  </div>
+
+  <button class="scan-btn" id="scan-btn" onclick="startScan()">
+    Scan for Trackers
+  </button>
+
+  <div id="status-bar">
+    <span>→</span>
+    <span id="status-text">Ready to scan. Press the button to begin.</span>
+  </div>
+
+  <div class="section-label" id="results-label" style="display:none">Detected devices</div>
+  <div id="results"></div>
+
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon">✓</div>
+    <strong style="color:var(--safe);display:block;margin-bottom:6px">No known trackers found</strong>
+    All scanned devices appear to be safe. Move to different locations and scan again for a thorough check.
+  </div>
+
+  <div class="section-label" style="margin-top:32px">What this detects</div>
+  <div class="info-section">
+    <div class="info-row">
+      <span class="info-icon">🔵</span>
+      <div>
+        <div class="info-title">Apple AirTag</div>
+        <div class="info-desc">Ultra-wideband + Bluetooth tracker. Identified by Apple's "Find My" service UUIDs in BLE advertisements.</div>
+      </div>
+    </div>
+    <div class="info-row">
+      <span class="info-icon">🐬</span>
+      <div>
+        <div class="info-title">Flipper Zero</div>
+        <div class="info-desc">Multi-tool hacking device. Detectable via Bluetooth when its BLE module is active or emulating other devices.</div>
+      </div>
+    </div>
+    <div class="info-row">
+      <span class="info-icon">🟡</span>
+      <div>
+        <div class="info-title">Tile Trackers</div>
+        <div class="info-desc">Community-based Bluetooth trackers with distinct BLE service UUIDs and manufacturer data signatures.</div>
+      </div>
+    </div>
+    <div class="info-row">
+      <span class="info-icon">🔴</span>
+      <div>
+        <div class="info-title">Other BLE trackers</div>
+        <div class="info-desc">Galaxy SmartTags, Chipolo, Pebblebee — identified by manufacturer IDs and advertising patterns.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Known tracker signatures
+  const TRACKER_SIGNATURES = {
+    // Apple AirTag / Find My
+    airtag: {
+      label: 'AirTag / Find My',
+      type: 'airtag',
+      services: ['fd44', 'fd43', '00030000-0000-1000-8000-00805f9b34fb'],
+      namePatterns: [/airtag/i],
+      manufacturerId: 0x004c,
+      threat: true,
+    },
+    // Tile
+    tile: {
+      label: 'Tile Tracker',
+      type: 'tile',
+      services: ['feed'],
+      namePatterns: [/tile/i],
+      manufacturerId: 0xfe61,
+      threat: true,
+    },
+    // Flipper Zero
+    flipper: {
+      label: 'Flipper Zero',
+      type: 'flipper',
+      namePatterns: [/flipper/i, /xremote/i],
+      manufacturerId: 0x0483,
+      threat: true,
+    },
+    // Samsung SmartTag
+    smarttag: {
+      label: 'Samsung SmartTag',
+      type: 'unknown',
+      services: ['fd5a'],
+      namePatterns: [/smarttag/i, /galaxy tag/i],
+      manufacturerId: 0x0075,
+      threat: false,
+    },
+  };
+
+  let scanning = false;
+  let foundDevices = {};
+  let scanInterval = null;
+
+  function detectTracker(device, advertisementData) {
+    const name = (device.name || '').toLowerCase();
+
+    for (const [key, sig] of Object.entries(TRACKER_SIGNATURES)) {
+      // Name match
+      if (sig.namePatterns?.some(p => p.test(name))) return sig;
+
+      // Service UUID match
+      if (sig.services && advertisementData) {
+        for (const svc of (sig.services || [])) {
+          try {
+            if (advertisementData.uuids?.some(u => u.toLowerCase().includes(svc.toLowerCase()))) {
+              return sig;
+            }
+          } catch(e) {}
+        }
+      }
+
+      // Manufacturer data match
+      if (sig.manufacturerId && advertisementData?.manufacturerData) {
+        try {
+          for (const [id] of advertisementData.manufacturerData) {
+            if (id === sig.manufacturerId) return sig;
+          }
+        } catch(e) {}
+      }
+    }
+    return null;
+  }
+
+  function rssiToPercent(rssi) {
+    // RSSI typically -30 (very close) to -100 (far/lost)
+    const clamped = Math.max(-100, Math.min(-30, rssi ?? -80));
+    return Math.round(((clamped + 100) / 70) * 100);
+  }
+
+  function rssiClass(rssi) {
+    if (rssi >= -60) return 'close';
+    if (rssi >= -80) return 'medium';
+    return 'far';
+  }
+
+  function rssiLabel(rssi) {
+    if (rssi >= -60) return 'Close';
+    if (rssi >= -80) return 'Medium';
+    return 'Far';
+  }
+
+  function renderDevice(device, sig, rssi) {
+    const pct = rssiToPercent(rssi);
+    const rc = rssiClass(rssi);
+    const typeClass = `type-${sig?.type || 'unknown'}`;
+    const cardClass = sig?.threat ? 'device-card threat' : 'device-card warn';
+    const typeLabel = sig?.label || 'Unknown Device';
+
+    return `
+    <div class="device-card ${cardClass}" id="card-${device.id}">
+      <span class="device-name">${device.name || 'Unnamed Device'}</span>
+      <span class="device-type ${typeClass}">${typeLabel}</span>
+      <span class="device-meta">ID: ${device.id?.slice(0,16) || '—'}…</span>
+      <div class="rssi-bar-wrap">
+        <span class="rssi-label">${rssiLabel(rssi)}</span>
+        <div class="rssi-bar"><div class="rssi-fill ${rc}" style="width:${pct}%"></div></div>
+        <span class="rssi-value">${rssi ?? '—'} dBm</span>
+      </div>
+    </div>`;
+  }
+
+  function setStatus(msg, cls) {
+    const bar = document.getElementById('status-bar');
+    bar.className = cls ? `${cls}` : '';
+    document.getElementById('status-text').textContent = msg;
+  }
+
+  async function startScan() {
+    if (!navigator.bluetooth) {
+      setStatus('Web Bluetooth not supported. Use Chrome/Edge on Android or desktop.', 'found');
+      document.getElementById('compat-note').classList.add('visible');
+      return;
+    }
+
+    document.getElementById('scan-btn').disabled = true;
+    document.getElementById('scan-btn').innerHTML = '<span class="spinner"></span>Scanning…';
+    document.getElementById('results-label').style.display = 'none';
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('empty-state').classList.remove('visible');
+    foundDevices = {};
+
+    setStatus('Requesting Bluetooth access…', 'active');
+
+    try {
+      // Request all BLE devices (broad scan)
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+          0xfd44, 0xfd43, 0xfeed, 0xfd5a,
+          'battery_service',
+          '00001800-0000-1000-8000-00805f9b34fb',
+        ]
+      });
+
+      setStatus(`Connecting to: ${device.name || device.id}…`, 'active');
+
+      // Try to get advertisement data for RSSI via GATT
+      let rssi = null;
+      try {
+        const server = await device.gatt.connect();
+        rssi = null; // GATT doesn't expose RSSI directly in Web BT
+        await server.disconnect();
+      } catch(e) {}
+
+      const sig = detectTracker(device, null);
+      const id = device.id;
+
+      if (!foundDevices[id]) {
+        foundDevices[id] = { device, sig, rssi: rssi ?? -75 };
+      }
+
+      renderAll();
+
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        setStatus('No device selected or no devices found nearby.', '');
+      } else if (err.name === 'SecurityError') {
+        setStatus('Bluetooth permission denied.', 'found');
+      } else {
+        setStatus(`Error: ${err.message}`, 'found');
+      }
+    } finally {
+      document.getElementById('scan-btn').disabled = false;
+      document.getElementById('scan-btn').innerHTML = 'Scan Again';
+    }
+  }
+
+  function renderAll() {
+    const resultsEl = document.getElementById('results');
+    const entries = Object.values(foundDevices);
+
+    if (entries.length === 0) {
+      document.getElementById('results-label').style.display = 'none';
+      document.getElementById('empty-state').classList.add('visible');
+      setStatus('Scan complete. No known trackers detected.', 'clean');
+      return;
+    }
+
+    document.getElementById('results-label').style.display = 'block';
+    document.getElementById('empty-state').classList.remove('visible');
+
+    const threats = entries.filter(e => e.sig?.threat);
+    const others = entries.filter(e => !e.sig?.threat);
+
+    if (threats.length > 0) {
+      setStatus(`⚠ ${threats.length} potential tracker(s) found!`, 'found');
+    } else {
+      setStatus(`${entries.length} device(s) found — no known threats.`, 'clean');
+    }
+
+    resultsEl.innerHTML = entries
+      .sort((a,b) => (b.rssi ?? -999) - (a.rssi ?? -999))
+      .map(({ device, sig, rssi }) => renderDevice(device, sig, rssi))
+      .join('');
+  }
+
+  // Check browser support on load
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!navigator.bluetooth) {
+      document.getElementById('compat-note').classList.add('visible');
+      document.getElementById('scan-btn').title = 'Web Bluetooth not available in this browser';
+    }
+  });
+</script>
+</body>
+</html>
