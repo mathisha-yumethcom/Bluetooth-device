@@ -1,2 +1,2 @@
 # Bluetooth-device
-https://mathisha-yumethcom.github.io/Bluetooth-device/
+https://mathisha-yumeth.github.io/Bluetooth-device/
